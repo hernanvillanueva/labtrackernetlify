@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LabTrack — Tu historial de laboratorio, siempre a mano</title>
+<meta name="description" content="Importá tus análisis de laboratorio en PDF, visualizá tu evolución y entendé tus resultados. Gratis, privado, sin registros."/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #060b14;
+  --surface: #0d1625;
+  --surface2: #111f35;
+  --border: #1a2d47;
+  --accent: #00d4aa;
+  --accent2: #00a87f;
+  --accent-glow: #00d4aa22;
+  --text: #f0f6ff;
+  --muted: #6b8db5;
+  --dim: #3a5a80;
+  --red: #f87171;
+  --yellow: #fbbf24;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 18px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, var(--bg) 60%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--text);
+  letter-spacing: -0.03em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.8); }
+}
+
+.nav-cta {
+  background: var(--accent);
+  color: #060b14;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 9px 20px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.nav-cta:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 4px 20px var(--accent-glow); }
+
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120px 24px 80px;
+  text-align: center;
+  z-index: 1;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 20%; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 400px;
+  background: radial-gradient(ellipse, #00d4aa12 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 5px 14px 5px 8px;
+  font-size: 12px;
+  color: var(--accent);
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+  margin-bottom: 28px;
+  animation: fadeUp 0.6s ease both;
+}
+.hero-tag::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+h1 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: clamp(40px, 7vw, 80px);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  max-width: 900px;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+
+h1 em {
+  font-style: normal;
+  color: var(--accent);
+  position: relative;
+}
+
+h1 em::after {
+  content: '';
+  position: absolute;
+  bottom: 2px; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  border-radius: 2px;
+}
+
+.hero-sub {
+  font-size: 18px;
+  color: var(--muted);
+  max-width: 560px;
+  margin: 24px auto 0;
+  line-height: 1.7;
+  animation: fadeUp 0.6s 0.2s ease both;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 40px;
+  flex-wrap: wrap;
+  justify-content: center;
+  animation: fadeUp 0.6s 0.3s ease both;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent);
+  color: #060b14;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 14px 28px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 0 40px var(--accent-glow);
+}
+.btn-primary:hover { background: var(--accent2); transform: translateY(-2px); box-shadow: 0 8px 40px #00d4aa33; }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 14px 28px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+
+.hero-note {
+  margin-top: 20px;
+  font-size: 12px;
+  color: var(--dim);
+  font-family: 'DM Mono', monospace;
+  animation: fadeUp 0.6s 0.4s ease both;
+}
+
+.mock-wrapper {
+  position: relative;
+  margin-top: 60px;
+  width: 100%;
+  max-width: 900px;
+  animation: fadeUp 0.8s 0.5s ease both;
+}
+
+.mock-glow {
+  position: absolute;
+  inset: -40px;
+  background: radial-gradient(ellipse at 50% 100%, #00d4aa15 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.mock-screen {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 40px 80px #00000080, 0 0 0 1px #ffffff08;
+}
+
+.mock-bar {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mock-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+.mock-content {
+  padding: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.mock-card {
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 14px;
+  border-left: 3px solid var(--accent);
+}
+.mock-card.red { border-color: var(--red); }
+.mock-card.yellow { border-color: var(--yellow); }
+.mock-card-label { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 6px; }
+.mock-card-val { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; color: var(--accent); }
+.mock-card.red .mock-card-val { color: var(--red); }
+.mock-card.yellow .mock-card-val { color: var(--yellow); }
+.mock-card-unit { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.mock-card-mini { height: 28px; margin-top: 8px; display: flex; align-items: flex-end; gap: 2px; }
+.mock-bar-item { background: var(--accent); opacity: 0.4; border-radius: 2px; flex: 1; }
+.mock-card.red .mock-bar-item { background: var(--red); }
+.mock-card.yellow .mock-bar-item { background: var(--yellow); }
+
+.stats {
+  position: relative;
+  z-index: 1;
+  padding: 60px 24px;
+  display: flex;
+  justify-content: center;
+  gap: 60px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.stat { text-align: center; }
+.stat-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 42px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.stat-label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+.features {
+  position: relative;
+  z-index: 1;
+  padding: 100px 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.section-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--text);
+  max-width: 600px;
+  margin-bottom: 60px;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.feature {
+  background: var(--surface);
+  padding: 32px;
+  transition: background 0.2s;
+}
+.feature:hover { background: var(--surface2); }
+
+.feature-icon {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  background: var(--accent-glow);
+  border: 1px solid #00d4aa22;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 16px;
+}
+
+.feature-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.feature-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+.how {
+  position: relative;
+  z-index: 1;
+  padding: 80px 24px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.how-inner { max-width: 900px; margin: 0 auto; }
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 40px;
+  margin-top: 48px;
+}
+
+.step { display: flex; flex-direction: column; gap: 12px; }
+.step-num { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.1em; }
+.step-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 17px; color: var(--text); line-height: 1.2; }
+.step-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+/* ── PRIVACY SECTION ── */
+.privacy-section {
+  position: relative;
+  z-index: 1;
+  padding: 80px 24px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.privacy-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  gap: 48px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.privacy-icon { font-size: 64px; flex-shrink: 0; padding-top: 8px; }
+
+.privacy-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.privacy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.privacy-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.privacy-check {
+  color: var(--accent);
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── TOOLTIP / EXPLAINER ── */
+.explainer-block {
+  margin-top: 28px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 560px;
+}
+
+.explainer-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.explainer-trigger strong {
+  color: var(--text);
+}
+
+.what-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-glow);
+  border: 1px solid #00d4aa33;
+  border-radius: 100px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--accent);
+  font-family: 'DM Mono', monospace;
+  cursor: pointer;
+  margin-left: 6px;
+  transition: all 0.2s;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.what-link:hover { background: #00d4aa33; }
+
+.explainer-content {
+  display: none;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.explainer-content.open { display: block; }
+
+.explainer-content p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+
+.explainer-content p:last-child { margin-bottom: 0; }
+
+.explainer-content strong { color: var(--text); }
+
+.explainer-content .highlight {
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+/* ── ANALYTES ── */
+.analytes {
+  position: relative;
+  z-index: 1;
+  padding: 80px 24px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.analytes-inner { max-width: 1100px; margin: 0 auto; }
+
+.analytes-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 40px;
+}
+
+.analyte-tag {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  transition: all 0.2s;
+}
+.analyte-tag:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── VIRUSTOTAL BADGE ── */
+.vt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid #22c55e44;
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: #86efac;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.vt-badge:hover { border-color: #22c55e; background: #22c55e11; }
+.vt-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+
+.cta-section {
+  position: relative;
+  z-index: 1;
+  padding: 120px 24px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.cta-glow {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 500px; height: 300px;
+  background: radial-gradient(ellipse, #00d4aa18 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.cta-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(32px, 5vw, 60px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  max-width: 700px;
+  margin: 0 auto 16px;
+}
+
+.cta-sub { font-size: 16px; color: var(--muted); margin-bottom: 40px; }
+
+footer {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--border);
+  padding: 32px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-logo { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--muted); }
+.footer-note { font-size: 12px; color: var(--dim); font-family: 'DM Mono', monospace; }
+.footer-links { display: flex; gap: 20px; }
+.footer-links a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+.footer-links a:hover { color: var(--accent); }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+@media (max-width: 600px) {
+  nav { padding: 14px 20px; }
+  .features-grid { grid-template-columns: 1fr; }
+  .privacy-inner { flex-direction: column; }
+  footer { flex-direction: column; text-align: center; }
+  .hero-actions { flex-direction: column; align-items: center; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    LabTrack
+  </div>
+  <a href="#download" class="nav-cta">Descargar gratis →</a>
+</nav>
+
+<section class="hero">
+  <div class="hero-tag">v1.5 · Gratis · Sin registro · Open Source</div>
+  <h1>Tu historial de laboratorio,<br><em>siempre a mano</em></h1>
+  <p class="hero-sub">Importá tus análisis en PDF, visualizá tu evolución en el tiempo y entendé tus resultados con referencias internacionales. Tus datos nunca salen de tu dispositivo.</p>
+  <div class="hero-actions">
+    <a href="labtrack.html" download class="btn-primary">⬇ Descargar LabTrack</a>
+    <a href="#features" class="btn-secondary">Ver funcionalidades →</a>
+  </div>
+  <p class="hero-note">🔒 100% local · Sin suscripción · Sin publicidad</p>
+
+  <div class="mock-wrapper">
+    <div class="mock-glow"></div>
+    <div class="mock-screen">
+      <div class="mock-bar">
+        <div class="mock-dot" style="background:#f87171"></div>
+        <div class="mock-dot" style="background:#fbbf24"></div>
+        <div class="mock-dot" style="background:#00d4aa"></div>
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:#3a5a80;margin-left:8px">LabTrack · Dashboard</span>
+      </div>
+      <div class="mock-content">
+        <div class="mock-card">
+          <div class="mock-card-label">Glucemia</div>
+          <div class="mock-card-val">94</div>
+          <div class="mock-card-unit">mg/dL · normal</div>
+          <div class="mock-card-mini">
+            <div class="mock-bar-item" style="height:40%"></div>
+            <div class="mock-bar-item" style="height:55%"></div>
+            <div class="mock-bar-item" style="height:50%"></div>
+            <div class="mock-bar-item" style="height:65%"></div>
+            <div class="mock-bar-item" style="height:60%"></div>
+          </div>
+        </div>
+        <div class="mock-card red">
+          <div class="mock-card-label">Colesterol Total</div>
+          <div class="mock-card-val">218</div>
+          <div class="mock-card-unit">mg/dL · elevado</div>
+          <div class="mock-card-mini">
+            <div class="mock-bar-item" style="height:70%"></div>
+            <div class="mock-bar-item" style="height:80%"></div>
+            <div class="mock-bar-item" style="height:85%"></div>
+            <div class="mock-bar-item" style="height:90%"></div>
+            <div class="mock-bar-item" style="height:95%"></div>
+          </div>
+        </div>
+        <div class="mock-card">
+          <div class="mock-card-label">Hemoglobina</div>
+          <div class="mock-card-val">14.2</div>
+          <div class="mock-card-unit">g/dL · normal</div>
+          <div class="mock-card-mini">
+            <div class="mock-bar-item" style="height:60%"></div>
+            <div class="mock-bar-item" style="height:65%"></div>
+            <div class="mock-bar-item" style="height:60%"></div>
+            <div class="mock-bar-item" style="height:62%"></div>
+            <div class="mock-bar-item" style="height:64%"></div>
+          </div>
+        </div>
+        <div class="mock-card yellow">
+          <div class="mock-card-label">Vitamina D</div>
+          <div class="mock-card-val">18</div>
+          <div class="mock-card-unit">ng/mL · bajo</div>
+          <div class="mock-card-mini">
+            <div class="mock-bar-item" style="height:50%"></div>
+            <div class="mock-bar-item" style="height:45%"></div>
+            <div class="mock-bar-item" style="height:40%"></div>
+            <div class="mock-bar-item" style="height:35%"></div>
+            <div class="mock-bar-item" style="height:30%"></div>
+          </div>
+        </div>
+        <div class="mock-card">
+          <div class="mock-card-label">TSH</div>
+          <div class="mock-card-val">2.1</div>
+          <div class="mock-card-unit">mUI/mL · normal</div>
+          <div class="mock-card-mini">
+            <div class="mock-bar-item" style="height:45%"></div>
+            <div class="mock-bar-item" style="height:50%"></div>
+            <div class="mock-bar-item" style="height:48%"></div>
+            <div class="mock-bar-item" style="height:52%"></div>
+            <div class="mock-bar-item" style="height:50%"></div>
+          </div>
+        </div>
+        <div class="mock-card">
+          <div class="mock-card-label">PCR</div>
+          <div class="mock-card-val">3.2</div>
+          <div class="mock-card-unit">mg/L · normal</div>
+          <div class="mock-card-mini">
+            <div class="mock-bar-item" style="height:35%"></div>
+            <div class="mock-bar-item" style="height:30%"></div>
+            <div class="mock-bar-item" style="height:32%"></div>
+            <div class="mock-bar-item" style="height:28%"></div>
+            <div class="mock-bar-item" style="height:30%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="stats reveal">
+  <div class="stat"><div class="stat-num">64+</div><div class="stat-label">Analitos con referencias internacionales</div></div>
+  <div class="stat"><div class="stat-num">8</div><div class="stat-label">Idiomas soportados</div></div>
+  <div class="stat"><div class="stat-num">0</div><div class="stat-label">Datos enviados a servidores externos</div></div>
+  <div class="stat"><div class="stat-num">100%</div><div class="stat-label">Gratis, para siempre</div></div>
+</div>
+
+<section class="features reveal" id="features">
+  <div class="section-tag">Funcionalidades</div>
+  <h2 class="section-title">Todo lo que necesitás para entender tus análisis</h2>
+  <div class="features-grid">
+    <div class="feature"><div class="feature-icon">📄</div><div class="feature-title">Importación de PDFs</div><div class="feature-desc">Arrastrá o seleccioná tus estudios en PDF. La IA extrae automáticamente todos los valores, unidades y rangos de referencia.</div></div>
+    <div class="feature"><div class="feature-icon">📈</div><div class="feature-title">Evolución temporal</div><div class="feature-desc">Visualizá cómo cambiaron tus valores a lo largo del tiempo con gráficos interactivos. Detectá tendencias antes de que se vuelvan problemas.</div></div>
+    <div class="feature"><div class="feature-icon">🔬</div><div class="feature-title">Referencias internacionales</div><div class="feature-desc">Valores de referencia de ADA, AHA, WHO, IFCC, KDIGO y más. Con links directos a las fuentes originales.</div></div>
+    <div class="feature"><div class="feature-icon">🔒</div><div class="feature-title">Privacidad total</div><div class="feature-desc">Tus datos nunca salen de tu dispositivo. Sin cuentas, sin servidores, sin publicidad. Todo encriptado localmente.</div></div>
+    <div class="feature"><div class="feature-icon">🌐</div><div class="feature-title">8 idiomas</div><div class="feature-desc">Español, inglés, portugués, francés, alemán, italiano, sueco y danés. Detección automática según tu dispositivo.</div></div>
+    <div class="feature"><div class="feature-icon">🎨</div><div class="feature-title">Temas personalizados</div><div class="feature-desc">Modo oscuro, claro, o creá hasta 3 temas propios con control total sobre cada color de la interfaz.</div></div>
+    <div class="feature"><div class="feature-icon">👤</div><div class="feature-title">Múltiples perfiles</div><div class="feature-desc">Manejá el historial de distintas personas desde la misma app. Ideal para toda la familia.</div></div>
+    <div class="feature"><div class="feature-icon">📋</div><div class="feature-title">Reporte PDF</div><div class="feature-desc">Generá un reporte completo en PDF para llevarle a tu médico con todo tu historial organizado.</div></div>
+    <div class="feature"><div class="feature-icon">⚡</div><div class="feature-title">Sin instalación</div><div class="feature-desc">Abre directo en el browser. Sin instaladores, sin actualizaciones manuales, sin permisos especiales.</div></div>
+  </div>
+</section>
+
+<section class="how reveal">
+  <div class="how-inner">
+    <div class="section-tag">Cómo funciona</div>
+    <h2 class="section-title">En tres pasos</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-title">Abrís la app</div>
+        <div class="step-desc">Descargás el archivo HTML y lo abrís en tu browser favorito. No requiere instalación ni cuenta.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-title">Importás tus PDFs</div>
+        <div class="step-desc">Arrastrás tus estudios de laboratorio en PDF. La IA lee y organiza todos los valores automáticamente.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-title">Explorás tu evolución</div>
+        <div class="step-desc">Visualizás gráficos, comparás con referencias internacionales y llevás el control de tu salud.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRIVACY + EXPLAINER -->
+<section class="privacy-section reveal">
+  <div class="privacy-inner">
+    <div class="privacy-icon">🔐</div>
+    <div class="privacy-content">
+      <div class="section-tag">Privacidad</div>
+      <h2 class="privacy-title">Tus análisis son tuyos.<br>Solo tuyos.</h2>
+
+      <div class="privacy-list">
+        <div class="privacy-item">
+          <span class="privacy-check">✓</span>
+          <span>Tus datos se guardan <strong>encriptados en tu dispositivo</strong>, nunca en servidores externos.</span>
+        </div>
+        <div class="privacy-item">
+          <span class="privacy-check">✓</span>
+          <span>No hay cuentas, no hay registro, no hay forma de saber quién usás la app.</span>
+        </div>
+        <div class="privacy-item">
+          <span class="privacy-check">✓</span>
+          <span>Sin publicidad, sin telemetría, sin analytics de ningún tipo.</span>
+        </div>
+        <div class="privacy-item">
+          <span class="privacy-check">✓</span>
+          <span>El código fuente es abierto y auditable en GitHub.</span>
+        </div>
+      </div>
+
+      <!-- EXPLAINER BLOCK -->
+      <div class="explainer-block">
+        <div class="explainer-trigger">
+          <span>Para importar PDFs se necesita conexión a internet</span>
+          <span class="what-link" onclick="toggleExplainer()">¿Qué significa esto? ↓</span>
+        </div>
+
+        <div class="explainer-content" id="explainerContent">
+          <p><strong>Tu PDF nunca sale de tu dispositivo.</strong></p>
+          <p>Cuando importás un análisis, lo que sucede es esto:</p>
+          <div class="highlight">
+            1. Tu teléfono o computadora lee el PDF <strong>localmente</strong>, sin mandarlo a ningún lado.<br><br>
+            2. Extrae únicamente los números y nombres de los estudios — por ejemplo: <em>"Glucemia: 94 mg/dL"</em>. Sin tu nombre, sin tu DNI, sin ningún dato personal.<br><br>
+            3. Esa lista de números viaja momentáneamente a una IA para identificarlos correctamente.<br><br>
+            4. La IA devuelve los valores estructurados. Eso es todo.
+          </div>
+          <p><strong>Nadie guarda nada. Nadie ve tu PDF. Nadie sabe quién sos.</strong> La IA solo recibe una lista de valores numéricos anónimos, los procesa en segundos, y no los almacena.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="analytes reveal">
+  <div class="analytes-inner">
+    <div class="section-tag">Cobertura</div>
+    <h2 class="section-title">64+ analitos con referencias validadas</h2>
+    <div class="analytes-grid">
+      <span class="analyte-tag">Glucemia</span><span class="analyte-tag">HbA1c</span>
+      <span class="analyte-tag">Insulina</span><span class="analyte-tag">HOMA</span>
+      <span class="analyte-tag">Colesterol Total</span><span class="analyte-tag">LDL</span>
+      <span class="analyte-tag">HDL</span><span class="analyte-tag">Triglicéridos</span>
+      <span class="analyte-tag">Hemoglobina</span><span class="analyte-tag">Hematocrito</span>
+      <span class="analyte-tag">Glóbulos Rojos</span><span class="analyte-tag">Leucocitos</span>
+      <span class="analyte-tag">Plaquetas</span><span class="analyte-tag">VCM · HCM · CHCM</span>
+      <span class="analyte-tag">Neutrófilos</span><span class="analyte-tag">Linfocitos</span>
+      <span class="analyte-tag">TSH</span><span class="analyte-tag">T4 Libre</span>
+      <span class="analyte-tag">T3 Libre</span><span class="analyte-tag">Ferritina</span>
+      <span class="analyte-tag">Vitamina D</span><span class="analyte-tag">Vitamina B12</span>
+      <span class="analyte-tag">Ácido Fólico</span><span class="analyte-tag">Creatinina</span>
+      <span class="analyte-tag">Urea</span><span class="analyte-tag">Ácido Úrico</span>
+      <span class="analyte-tag">TGO · TGP</span><span class="analyte-tag">GGT</span>
+      <span class="analyte-tag">Bilirrubina</span><span class="analyte-tag">PCR</span>
+      <span class="analyte-tag">Eritrosedimentación</span><span class="analyte-tag">Proteínas Totales</span>
+      <span class="analyte-tag">Albúmina</span><span class="analyte-tag">SHBG</span>
+      <span class="analyte-tag">Testosterona</span><span class="analyte-tag">Estradiol</span>
+      <span class="analyte-tag">Cortisol</span><span class="analyte-tag">y muchos más…</span>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section reveal" id="download">
+  <div class="cta-glow"></div>
+  <h2 class="cta-title">Empezá a entender tu salud hoy</h2>
+  <p class="cta-sub">Gratis. Sin registro. Sin publicidad.</p>
+  <a href="labtrack.html" download class="btn-primary" style="font-size:17px;padding:16px 36px">
+    ⬇ Descargar LabTrack gratis
+  </a>
+  <!-- VIRUSTOTAL BADGE — reemplazar href con el link real después de escanear -->
+  <div style="margin-top:20px">
+    <a href="#" class="vt-badge" id="vtBadge" style="display:none">
+      <div class="vt-dot"></div>
+      Verificado por VirusTotal — 0 amenazas detectadas
+    </a>
+    <p style="margin-top:12px;font-size:12px;color:var(--dim);font-family:'DM Mono',monospace">
+      Archivo HTML · ~200KB · Chrome · Safari · Firefox · Brave
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">LabTrack</div>
+  <div class="footer-note">🔒 Tus datos nunca salen de tu dispositivo</div>
+  <div class="footer-links">
+    <a href="https://github.com/hernanvillanueva/labtrack">GitHub</a>
+    <a href="labtrack.html">Abrir app</a>
+  </div>
+</footer>
+
+<script>
+// Reveal on scroll
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Animate mock bar items
+document.querySelectorAll('.mock-bar-item').forEach(el => {
+  el.style.transition = 'height 0.8s ease';
+  setInterval(() => {
+    el.style.height = (20 + Math.random() * 70) + '%';
+  }, 1500 + Math.random() * 1000);
+});
+
+// Explainer toggle
+function toggleExplainer() {
+  const content = document.getElementById('explainerContent');
+  const link = document.querySelector('.what-link');
+  const isOpen = content.classList.toggle('open');
+  link.textContent = isOpen ? '¿Qué significa esto? ↑' : '¿Qué significa esto? ↓';
+}
+</script>
+</body>
+</html>
